@@ -1,0 +1,29 @@
+@import url("https://webgl2fundamentals.org/webgl/resources/webgl-tutorials.css");
+body {
+  margin: 0;
+}
+canvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+#ui {
+  position: absolute;
+  width: 20%;
+  padding: 10px;
+}
+#randomizeButton {
+  background-color: black;
+  color: white;
+  margin: 5px 0px 0px 0px;
+}
+
+#updateButton {
+  margin: 5px 0px 0px 0px;
+}
+
+#treeSlider1,#treeSlider2,#treeSlider3,#treeSlider4{
+  color: black;
+  background: black;
+  color-scheme: black;
+}
