@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoftShadows</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<script id="vs" type="x-shader/x-vertex">#version 300 es
+    in vec4 a_position;
+    in vec2 a_texcoord;
+    in vec3 a_normal;
+    
+    uniform mat4 u_projection;
+    uniform mat4 u_view;
+    uniform mat4 u_world;
+    uniform mat4 u_textureMatrix;
+    
+    out vec2 v_texcoord;
+    out vec4 v_projectedTexcoord;
+    out vec3 v_normal;
+    
+    void main() {
+        vec4 worldPosition = u_world * a_position;
+        gl_Position = u_projection * u_view * worldPosition;
+        v_texcoord = a_texcoord;
+        v_projectedTexcoord = u_textureMatrix * worldPosition;
+        v_normal = mat3(u_world) * a_normal;
+    }
+
+</script>
+
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+    precision highp float;
+    
+    in vec2 v_texcoord;
+    in vec4 v_projectedTexcoord;
+    in vec3 v_normal;
+    
+    uniform vec4 u_colorMult;
+    uniform sampler2D u_texture;
+    uniform sampler2D u_projectedTexture;
+    uniform float u_bias;
+    uniform vec3 u_reverseLightDirection;
+    
+    out vec4 outColor;
+    
+    void main() {
+        vec3 normal = normalize(v_normal);
+        float light = dot(normal, u_reverseLightDirection);
+        vec3 projectedTexcoord = v_projectedTexcoord.xyz / v_projectedTexcoord.w;
+        float currentDepth = projectedTexcoord.z + u_bias;
+
+        bool inRange =
+            projectedTexcoord.x >= 0.0 &&
+            projectedTexcoord.x <= 1.0 &&
+            projectedTexcoord.y >= 0.0 &&
+            projectedTexcoord.y <= 1.0;
+
+        float shadowLight;
+
+        // Implementação de softshadow com PCF
+        if (inRange) {
+            int range = 10;
+            int numSamples = (2 * range + 1) * (2 * range + 1);  // pixels percorridos → (2n+1)**2
+            float result = 0.0;
+            float texelSize = 1.0 / float(textureSize(u_projectedTexture, 0).x);
+
+            for (int x = -range; x <= range; x++) {
+                for (int y = -range; y <= range; y++) {
+                    vec2 offset = vec2(x, y) * texelSize;
+                    float pcfDepth = texture(u_projectedTexture, projectedTexcoord.xy + offset).r;
+                    result += (currentDepth <= pcfDepth) ? 1.0 : 0.2;
+                }
+            }
+            shadowLight = result / float(numSamples); //média das amostras percorridas no pcf
+        } else {
+            shadowLight = 1.0;
+        }
+
+        vec4 texColor = texture(u_texture, v_texcoord) * u_colorMult;
+        outColor = vec4(texColor.rgb * light * shadowLight, texColor.a);
+    }    
+
+</script>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="uiContainer">
+        <div id="ui">
+        </div>
+    </div>
+    <script src="https://webgl2fundamentals.org/webgl/resources/webgl-lessons-ui.js"></script>
+    <script src="https://webgl2fundamentals.org/webgl/resources/twgl-full.min.js"></script>
+    <script src="https://webgl2fundamentals.org/webgl/resources/m4.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
